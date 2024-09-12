@@ -1,0 +1,221 @@
+Comprehensive Rental Analytics and Customer Insights for DVD Business Optimization
+
+--There is a dispute logged by a customer with ID 50. How can we see a list of all payments made by the customer?
+select customer_id,amount, rental_id, payment_date from payment where customer_id = 50;
+
+--list of all payments above 5$. 
+select * from payment where amount > 5;
+
+--How many are they?
+select count(*) from payment where amount > 5;
+
+--We want to compare our rates with our competitors. How do we get our average rental rate and round it to 2 decimal places.
+select ROUND(avg(rental_rate),2) as average_rental_rate from film ;
+
+--We might need to pitch our business to investors for more funding. The investors will ask about our revenue generation so far. What is the figure?
+select sum(amount) as revenue from payment;
+
+--They might also ask about our target audience. How many customers are we serving currently?
+select count(customer_id) as current_customers from customer;
+
+--List the top ten districts where customers come from.
+select district, count(address_id)  from address GROUP BY district ORDER BY count(address_id) DESC LIMIT 10;
+
+--We need to identify clusters of our customers. Which districts have more than 7 customers?
+select district, count(address_id)  from address GROUP BY district having count(address_id)>7 ORDER BY count(address_id);
+
+--We have given discount to 10 customers in our promotional campaign. Their IDs are: 34, 69, 52, 468, 14, 3, 200, 176, 378, 346. We need to see a list of customers that have not gotten the discount.
+select * from customer;
+select first_name, last_name, customer_id from customer WHERE customer_id NOT IN(34,69,52,468,13,3,200,176,378,346);
+
+-- Those customers we offered discounts, can we get their first names? We need to send customised ‘thank you’ messages to them.
+select first_name, customer_id from customer WHERE customer_id IN(34,69,52,468,13,3,200,176,378,346);
+
+select * from film
+
+--From our catalogue of movies, which year has the most movies released?
+Select release_year, count(*) as movie_count from film GROUP BY release_year ORDER BY movie_count DESC LIMIT 1; ;
+
+--What is the distribution of movie ratings we have?
+select distinct(rating) from film
+
+SELECT rating, COUNT(*) AS rating_count
+FROM film
+GROUP BY rating
+ORDER BY rating_count DESC;
+
+--Can we view information for all rentals except where the customer ID is 100 or 400?
+select * from rental where customer_id NOT IN (100,400)
+
+--Let’s see the top 10 movies with the highest rental rates.
+select * from film;
+
+select title, rental_rate from film ORDER BY rental_rate DESC LIMIT 10;
+
+--Determine the top 5 customers based on the total amount spent on rentals.
+select * from customer;
+select * from payment; 
+
+select customer.customer_id, customer.first_name, customer.last_name, SUM(payment.amount) as total_amount FROM customer 
+JOIN payment ON customer.customer_id = payment.customer_id GROUP BY customer.customer_id, customer.first_name, customer.last_name 
+ORDER BY total_amount DESC LIMIT 5;
+
+--can also change table names for quicker work--
+select c.customer_id, c.first_name, c.last_name, SUM(p.amount) as total_amount FROM customer c 
+JOIN payment p ON c.customer_id = p.customer_id GROUP BY c.customer_id, c.first_name, c.last_name 
+ORDER BY total_amount DESC LIMIT 5;
+
+
+--Find the most rented film title.
+select * from film;
+select * from rental; 
+select * from category;
+
+select film.title, count(rental_id) as num_of_rentals from film
+join inventory on film.film_id = inventory.film_id
+join rental on inventory.inventory_id = rental.inventory_id
+GROUP BY film.title 
+ORDER BY num_of_rentals DESC 
+LIMIT 1
+
+--Identify films that have never been rented. (as films is our finding we are using film table as left join)
+select film.title, rental_id from film
+left join inventory on film.film_id = inventory.film_id
+left join rental on inventory.inventory_id = rental.inventory_id
+where rental.rental_id is NULL;
+
+--List the films rented by customer with ID 100.
+select film.title, rental.customer_id from rental
+join inventory on rental.inventory_id = inventory.inventory_id 
+join film on inventory.film_id = film.film_id 
+where rental.customer_id = 100;
+
+--Count the number of copies available for each film.
+select f.title, count(i.inventory_id) as copies_available from film f 
+join inventory i on f.film_id = i.film_id
+group by f.title
+order by copies_available DESC;
+
+--Identify films that are currently rented out.
+select f.title, r.return_date from film f
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+where r.return_date is NULL; 
+(--NULL is used with IS not =)
+
+--List films that have been rented more than 50 times.
+select f.title, count(r.rental_id) as rental_count from film f
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+group by f.title
+having count(r.rental_id) > 50;
+
+--Find the top 5 films based on rental revenue.
+select f.title, SUM(py.amount) as revenue_generated from film f 
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+join payment py on r.rental_id = py.rental_id
+group by f.title
+order by revenue_generated DESC;
+
+--Determine the average rental rate for each film category.
+
+SELECT c.name AS category, AVG(f.rental_rate) AS avg_rental_rate
+FROM category c
+JOIN film_category fc ON c.category_id = fc.category_id
+JOIN film f ON fc.film_id = f.film_id
+GROUP BY c.name;
+
+--List the number of rentals handled by each staff member.
+select * from staff;
+select * from rental; 
+
+select s.staff_id, s.first_name, s.last_name, count(r.staff_id) as rentals_handeled from staff s
+join rental r on s.staff_id = r.staff_id
+group by s.staff_id,s.first_name, s.last_name;
+
+--Identify customers who have a missing email address, and substitute the missing email for a placeholder email
+select * from customer where email is null; 
+
+select coalesce(email,'email does not exist') as email, customer_id from customer;
+
+--Generate a report showing the total rental count for each customer and display zero for customers who haven’t rented any movies.
+select * from customer;
+select * from rental; 
+
+select c.customer_id, c.first_name, c.last_name, coalesce(count(r.rental_id),'0') as num_of_rentals from customer c
+left join rental r on c.customer_id = r.customer_id
+group by c.customer_id;
+
+--Calculate the total revenue generated by each film rating (G, PG, PG-13, R). Convert the total amount to a formatted string with two decimal places.
+select * from film;
+select * from payment; 
+
+select f.rating,cast(SUM(py.amount) as numeric(10,2)) as revenue from film f
+join inventory i on f.film_id = i.film_id
+join rental r on i.inventory_id = r.inventory_id
+join payment py on r.rental_id = py.rental_id
+group by f.rating;
+
+--Create a report that categorizes customers into age groups (e.g., 0-17, 18-35, 36-50, 51+) based on their birthdate. Format the age as an integer
+select * from customer;
+select * from rental;
+select * from payment;
+
+
+--Identify customers who have spent over $100 in rentals and classify them as "High-Value". Otherwise, label them as "Regular"
+
+select c.customer_id, c.first_name, c.last_name, CAST(SUM(py.amount) AS numeric(10,1)) total_amount_paid,
+CASE WHEN
+		SUM(py.amount) > 100 THEN 'High Value'
+		ELSE 'Regular'
+END AS customer_category
+from customer c
+join payment py on c.customer_id = py.customer_id
+GROUP BY c.customer_id;
+
+--Determine the number of rentals returned late and classify them as "Minor" (1-3 dayslate) or "Major" (more than 3 days late)
+select rental_id, rental_date, return_date, EXTRACT(day from return_date - rental_date) as rented_days,
+case
+	when EXTRACT(DAY FROM return_date - rental_date) <= 3 THEN 'Minor'
+	when EXTRACT(DAY FROM return_date - rental_date) >= 4 THEN 'Major'
+end as default_level
+from rental
+
+
+--Find the top 5 customers who have rented the most movies. First determine the total rentals per customer.
+select * from customer;
+select * from rental;
+
+select customer_id, count(rental_id) as movies_rented from rental 
+group by customer_id
+order by movies_rented desc limit 5
+
+--find customers with more than 42 movies rented (Sub queries)
+select customer_id, movies_rented from
+(select customer_id, count(rental_id) as movies_rented from rental 
+group by customer_id
+order by movies_rented desc limit 5)
+where movies_rented > 42;
+
+--Identify customers who haven’t rented a movie in the last year. Filter customers based on their last rental date.
+select * from rental;
+
+select customer_id from(
+select rental_id, last_update, return_date, EXTRACT(day from last_update - return_date) as rented_days,
+case
+	when EXTRACT(DAY FROM last_update - return_date) <= 365 THEN 'less than a year'
+	when EXTRACT(DAY FROM last_update - return_date) > 365 THEN 'more than a year'
+end as default_level
+from rental)
+
+select customer_id, movies_rented from
+(select customer_id, count(rental_id) as movies_rented from rental 
+group by customer_id
+order by movies_rented)
+where movies_rented > 0;
+
+
+
+
+
